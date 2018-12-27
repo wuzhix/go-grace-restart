@@ -3,8 +3,14 @@ package restart
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
+)
+
+const (
+	procPath = "/proc"
+	pidPath = "./go-grace-restart.pid"
 )
 
 var (
@@ -59,4 +65,41 @@ func hookSignal() {
 		store.save()
 	}
 	os.Exit(1)
+}
+
+func getPid() int {
+	file, err := os.Open(pidPath)
+	defer file.Close()
+	if err != nil {
+		return 0
+	} else {
+		buffer := make([]byte, 10)
+		count, err := file.Read(buffer)
+		if err != nil {
+			return 0
+		}
+		pid, err := strconv.Atoi(string(buffer[:count]))
+		if err != nil {
+			return 0
+		} else {
+			if exist(pid) {
+				return pid
+			} else {
+				return 0
+			}
+		}
+	}
+}
+
+func savePid() {
+	file, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE, 0777)
+	defer file.Close()
+	if err == nil {
+		_, err = file.Write([]byte(strconv.Itoa(os.Getpid())))
+	}
+}
+
+func deleteFile(file string) error {
+	err := os.Remove(file)
+	return err
 }
